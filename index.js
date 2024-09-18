@@ -48,6 +48,7 @@ function gerarFaturaStr(fatura, pecas) {
     // Chamando a função para calcular o total da apresentação
     let total = calcularTotalApresentacao(apre, getPeca(apre));
     
+  
     function calcularCredito(apre){
       let creditos = 0;
       creditos += Math.max(getPeca(apre).audiencia - 30, 0);
@@ -57,8 +58,13 @@ function gerarFaturaStr(fatura, pecas) {
     }
     
     // Mais uma linha da fatura
-    faturaStr += `  ${getPeca(apre).nome}: ${formato(total/100)} (${apre.audiencia} assentos)\n`;
-    totalFatura += total;
+    let faturaStr = `Fatura ${fatura.cliente}\n`;
+    for (let apre of fatura.apresentacoes) {
+      faturaStr += `  ${getPeca(apre).nome}: ${formatarMoeda(calcularTotalApresentacao(apre))} (${apre.audiencia} assentos)\n`;
+    }
+    faturaStr += `Valor total: ${formatarMoeda(calcularTotalFatura())}\n`;
+    faturaStr += `Créditos acumulados: ${calcularTotalCreditos()} \n`;
+    return faturaStr;
   }
   
   faturaStr += `Valor total: ${formato(totalFatura/100)}\n`;
