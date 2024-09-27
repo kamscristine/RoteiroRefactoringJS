@@ -9,18 +9,28 @@ function formatarMoeda(valor) {
   }).format(valor / 100);
 }
 
-// Função para obter uma peça a partir de uma apresentação
-function getPeca(pecas, apre) {
-  return pecas[apre.id];
+// Classe Repositorio para encapsular o acesso ao arquivo de peças
+class Repositorio {
+  constructor() {
+    this.pecas = JSON.parse(readFileSync('./pecas.json'));
+  }
+
+  // Método para obter uma peça a partir de uma apresentação
+  getPeca(apre) {
+    return this.pecas[apre.id];
+  }
 }
 
 // Classe que modulariza os cálculos da fatura
 class ServicoCalculoFatura {
+  constructor(repo) {
+    this.repo = repo;
+  }
 
   // Função para calcular os créditos de uma apresentação
-  calcularCredito(pecas, apre) {
+  calcularCredito(apre) {
     let creditos = 0;
-    let peca = getPeca(pecas, apre);
+    let peca = this.repo.getPeca(apre);
 
     creditos += Math.max(apre.audiencia - 30, 0);
     if (peca.tipo === "comedia") {
@@ -31,17 +41,17 @@ class ServicoCalculoFatura {
   }
 
   // Função para calcular o total de créditos acumulados
-  calcularTotalCreditos(pecas, apresentacoes) {
+  calcularTotalCreditos(apresentacoes) {
     let creditos = 0;
     for (let apre of apresentacoes) {
-      creditos += this.calcularCredito(pecas, apre);
+      creditos += this.calcularCredito(apre);
     }
     return creditos;
   }
 
   // Função para calcular o total da apresentação
-  calcularTotalApresentacao(pecas, apre) {
-    let peca = getPeca(pecas, apre);
+  calcularTotalApresentacao(apre) {
+    let peca = this.repo.getPeca(apre);
     let total = 0;
 
     switch (peca.tipo) {
@@ -65,53 +75,37 @@ class ServicoCalculoFatura {
   }
 
   // Função para calcular o valor total da fatura
-  calcularTotalFatura(pecas, apresentacoes) {
+  calcularTotalFatura(apresentacoes) {
     let totalFatura = 0;
     for (let apre of apresentacoes) {
-      totalFatura += this.calcularTotalApresentacao(pecas, apre);
+      totalFatura += this.calcularTotalApresentacao(apre);
     }
     return totalFatura;
   }
 }
 
 // Função para gerar a fatura em string formatada
-function gerarFaturaStr(fatura, pecas, calc) {
+function gerarFaturaStr(fatura, calc) {
   let faturaStr = `Fatura ${fatura.cliente}\n`;
 
   for (let apre of fatura.apresentacoes) {
-    faturaStr += `  ${getPeca(pecas, apre).nome}: ${formatarMoeda(calc.calcularTotalApresentacao(pecas, apre))} (${apre.audiencia} assentos)\n`;
+    faturaStr += `  ${calc.repo.getPeca(apre).nome}: ${formatarMoeda(calc.calcularTotalApresentacao(apre))} (${apre.audiencia} assentos)\n`;
   }
 
-  faturaStr += `Valor total: ${formatarMoeda(calc.calcularTotalFatura(pecas, fatura.apresentacoes))}\n`;
-  faturaStr += `Créditos acumulados: ${calc.calcularTotalCreditos(pecas, fatura.apresentacoes)} \n`;
+  faturaStr += `Valor total: ${formatarMoeda(calc.calcularTotalFatura(fatura.apresentacoes))}\n`;
+  faturaStr += `Créditos acumulados: ${calc.calcularTotalCreditos(fatura.apresentacoes)} \n`;
 
   return faturaStr;
 }
 
-/*
-function gerarFaturaHTML(fatura, pecas) {
-  let faturaHTML = `<html>\n<p> Fatura ${fatura.cliente} </p>\n<ul>\n`;
-
-  for (let apre of fatura.apresentacoes) {
-    faturaHTML += `<li>  ${getPeca(pecas, apre).nome}: ${formatarMoeda(calcularTotalApresentacao(pecas, apre))} (${apre.audiencia} assentos) </li>\n`;
-  }
-
-  faturaHTML += `</ul>\n<p> Valor total: ${formatarMoeda(calcularTotalFatura(pecas, fatura.apresentacoes))} </p>\n`;
-  faturaHTML += `<p> Créditos acumulados: ${calcularTotalCreditos(pecas, fatura.apresentacoes)} </p>\n</html>`;
-
-  return faturaHTML;
-}
-*/
-
-// Lendo os arquivos JSON com faturas e peças
+// Lendo o arquivo JSON com as faturas
 const faturas = JSON.parse(readFileSync('./faturas.json'));
-const pecas = JSON.parse(readFileSync('./pecas.json'));
 
-// Criando o objeto da classe ServicoCalculoFatura
-const calc = new ServicoCalculoFatura();
+// Criando o objeto do repositório e da classe de cálculo
+const calc = new ServicoCalculoFatura(new Repositorio());
 
-// Gerando a fatura em string formatada usando o objeto 'calc'
-const faturaStr = gerarFaturaStr(faturas, pecas, calc);
+// Gerando a fatura em string formatada
+const faturaStr = gerarFaturaStr(faturas, calc);
 
 // Exibindo a fatura no formato de string
 console.log(faturaStr);
